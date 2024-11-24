@@ -46,6 +46,6 @@ std::string GenerateTotpSecret(size_t length) {
 
 uint32_t GenerateTotpCode(const std::string&, uint32_t, size_t) { return 123456; }
 
-bool VerifyTotpCode(const std::string&, uint32_t, uint32_t, size_t, int window) { return true; }
+bool VerifyTotpCode(const std::string&, uint32_t, uint32_t, size_t, int) { return true; }
 
 }  // namespace totp

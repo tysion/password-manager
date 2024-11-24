@@ -164,7 +164,7 @@ def test_add_and_get_passwords(test_user, test_passwords):
 
     for password in test_passwords:
         assert any(
-            p["service"] == password["service"] and p["login"] == password["login"]
+            p["service"] == password["service"] and p["login"] == password["login"] and p["password"] == password["password"]
             for p in passwords_data
         )
 
@@ -276,7 +276,7 @@ def test_password_isolation_between_users(users, passwords_for_users):
 
         for password in passwords:
             assert any(
-                p["service"] == password["service"] and p["login"] == password["login"]
+                p["service"] == password["service"] and p["login"] == password["login"] and p["password"] == password["password"]
                 for p in data
             )
 
@@ -285,7 +285,7 @@ def test_password_isolation_between_users(users, passwords_for_users):
         for other_user in other_users:
             for other_password in passwords_for_users[other_user]:
                 assert not any(
-                    p["service"] == other_password["service"] and p["login"] == other_password["login"]
+                    p["service"] == other_password["service"] and p["login"] == other_password["login"] and p["password"] == other_password["password"]
                     for p in data
                 )
 

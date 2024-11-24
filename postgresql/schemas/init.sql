@@ -17,3 +17,6 @@ CREATE TABLE IF NOT EXISTS passwords (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users USING hash(username);

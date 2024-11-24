@@ -29,7 +29,7 @@ userver::formats::json::Value AccessDenied() {
 userver::formats::json::Value SerializePassword(const models::Password& password, const std::string& decrypted) {
     userver::formats::json::ValueBuilder builder;
     builder["id"] = password.id;
-    builder["user_id"] = password.id;
+    builder["user_id"] = password.user_id;
     builder["service"] = password.service;
     builder["login"] = password.login;
     builder["password"] = decrypted;
