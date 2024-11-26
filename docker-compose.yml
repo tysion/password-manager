@@ -31,5 +31,14 @@ services:
     ports:
       - "8080:8080"
 
+  telegram_bot:
+    build:
+      context: ./telegram
+      dockerfile: Dockerfile
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      - password_manager_service
+
 volumes:
   postgres_data:
