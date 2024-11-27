@@ -1,5 +1,5 @@
 from telegram import Update, ReplyKeyboardRemove
-from telegram.bot import (
+from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
@@ -22,7 +22,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
+        f"Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
     )
     return MASTER_KEY
 
@@ -35,7 +35,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     await update.message.reply_text(
-        "Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
+        f"Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
     )
     return MASTER_KEY
 

@@ -35,6 +35,8 @@ services:
     build:
       context: ./telegram
       dockerfile: Dockerfile
+    image: password_manager_bot
+    container_name: password_manager_bot
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
