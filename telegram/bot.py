@@ -16,15 +16,40 @@ LOGIN, MASTER_KEY = range(2)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
+    username = str(user_id)
 
-    if user_id in TOKENS:
-        await update.message.reply_text("Вы уже авторизованы! Используйте команды /add, /get или /logout.")
-        return ConversationHandler.END
+    response = requests.post(f"{BASE_URL}/user", json={"username": username})
 
-    await update.message.reply_text(
-        f"Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
-    )
-    return MASTER_KEY
+    if response.status_code == 200:
+        data = response.json()
+        master_key = data["master_key"]
+        totp_secret = data["totp_secret"]
+
+        await update.message.reply_text(
+            "Добро пожаловать! Вы успешно зарегистрированы.\n"
+            "Сохраните ваш мастер-ключ и TOTP-ключ, они понадобятся для авторизации.",
+        )
+        await update.message.reply_text(
+            f"Ваш мастер-ключ:\n`{master_key}`",
+            parse_mode="MarkdownV2",
+            protect_content=True, 
+        )
+        await update.message.reply_text(
+            f"Ваш TOTP-ключ:\n`{totp_secret}`",
+            parse_mode="MarkdownV2",
+            protect_content=True,
+        )
+
+        # Переход к авторизации
+        await update.message.reply_text("Введите ваш мастер-ключ для авторизации.")
+        return MASTER_KEY
+
+    else:
+        # Пользователь уже существует или другая ошибка
+        await update.message.reply_text(
+            "Введите ваш мастер-ключ для авторизации."
+        )
+        return MASTER_KEY
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
