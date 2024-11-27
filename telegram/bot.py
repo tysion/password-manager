@@ -31,13 +31,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         await update.message.reply_text(
             f"Ваш мастер-ключ:\n`{master_key}`",
-            parse_mode="MarkdownV2",
-            protect_content=True, 
         )
         await update.message.reply_text(
             f"Ваш TOTP-ключ:\n`{totp_secret}`",
-            parse_mode="MarkdownV2",
-            protect_content=True,
         )
 
         # Переход к авторизации
@@ -50,19 +46,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "Введите ваш мастер-ключ для авторизации."
         )
         return MASTER_KEY
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_id = update.message.from_user.id
-
-    if user_id in TOKENS:
-        await update.message.reply_text("Вы уже авторизованы! Используйте команды /add, /get или /logout.")
-        return ConversationHandler.END
-
-    await update.message.reply_text(
-        f"Добро пожаловать! Ваш ID: {user_id}. Для регистрации введите мастер-ключ."
-    )
-    return MASTER_KEY
 
 
 async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
