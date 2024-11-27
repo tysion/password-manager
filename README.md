@@ -1,6 +1,6 @@
 # Password Manager Service
 
-A secure and lightweight password management service with a Telegram bot interface. This project provides APIs for managing passwords and integrates with PostgreSQL for data storage. It ensures security with encryption, JWT-based authentication, and future support for TOTP.
+A password management service with a Telegram bot interface. This project provides APIs for managing passwords and integrates with PostgreSQL for data storage. It ensures security with encryption, JWT-based authentication, and future support for TOTP.
 
 ---
 
@@ -40,6 +40,8 @@ Run the service:
 ./password_manager --config ../configs/static_config.yaml --config_vars ../configs/config_vars.yaml
 ```
 
+---
+
 ## Docker Setup
 Build Docker images for the service:
 ```
@@ -55,6 +57,8 @@ Check logs for the service:
 ```
 docker logs password_manager_service
 ```
+
+---
 
 ## Testing Instructions
 
@@ -79,6 +83,8 @@ Run tests with pytest:
 cd tests
 pytest test_service.py
 ```
+
+---
 
 ## Future Work
 
