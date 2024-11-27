@@ -124,11 +124,7 @@ async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if passwords:
             for password in passwords:
                 await update.message.reply_text(
-                    f"Сервис: {password['service']}\Логин: {password['login']}"
-                )
-                await update.message.reply_text(
-                    f"Пароль: {password['password']}",
-                    protect_content=True,  # Hides the message content
+                    f"Сервис: {password['service']}\nЛогин: {password['login']}\nПароль: {password['password']}"
                 )
         else:
             await update.message.reply_text("Нет сохранённых паролей.")
