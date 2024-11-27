@@ -1,40 +1,94 @@
-# Password manager
+# Password Manager Service
 
-Simple C++ service that uses [userver framework](https://github.com/userver-framework/userver) with PostgreSQL.
+A secure and lightweight password management service with a Telegram bot interface. This project provides APIs for managing passwords and integrates with PostgreSQL for data storage. It ensures security with encryption, JWT-based authentication, and future support for TOTP.
 
+---
 
-## Build from source
+## Features
+- **Password storage**: Save, retrieve, and manage passwords securely.
+- **Telegram bot interface**: Interact with the service through a user-friendly bot.
+- **Secure authentication**: Utilizes master keys and JWT for user authentication.
+- **PostgreSQL database**: Robust storage for users and passwords.
 
+---
+
+## Build Instructions
+
+### Prerequisites
+- **C++ Compiler**: Clang 15+.
+- **CMake**: Version 3.12 or higher.
+- **PostgreSQL**: Version 15.
+- **Docker**: Optional, for containerized setup.
+- **Python**: Version 3.10+ for integration tests.
+
+### Build the Service
+Clone the repository:
+ ```bash
+ git clone https://github.com/your-repo/password-manager.git
+ cd password-manager
+ ```
+
+Build the service using CMake:
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -- -j$(nproc)
 ```
-mkdir build 
-cd build
-cmake ..
-cmake --build . -- -j $nproc
+
+Run the service:
+```
+./password_manager --config ../configs/static_config.yaml --config_vars ../configs/config_vars.yaml
 ```
 
-## Run service
-
-Fill the `.env` file with corresponding variables
-
+## Docker Setup
+Build Docker images for the service:
 ```
+docker-compose build
+```
+
+Start the service along with PostgreSQL:
+```
+docker-compose up -d
+```
+
+Check logs for the service:
+```
+docker logs password_manager_service
+```
+
+## Testing Instructions
+
+### Unit Tests
+Build and run unit tests:
+```
+cmake --build . --target password_manager_unittest
+./password_manager_unittest
+```
+
+### Integration Tests
+Configure .env for integration tests:
+```bash
 POSTGRES_USER=password_manager
-POSTGRES_PASSWORD=<your password>
+POSTGRES_PASSWORD=password
 POSTGRES_DB=password_manager
-POSTGRES_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-JWT_SECRET_KEY=<your secret>
-CRYPTO_AES_256_BASE64_KEY=<base 64 encoded AES 256 key>
+BASE_URL=http://localhost:8080/api/v1
 ```
 
-Then run the following command
+Run tests with pytest:
+```bash
+cd tests
+pytest test_service.py
 ```
-docker compose up -d --build
-```
 
-Plans:
+## Future Work
 
-1. Telegram bot            (HARD)
-2. TOTP support            (HARD) 
-3. Delete password handler (EASY)
+TOTP support:
+- Implement time-based one-time password (TOTP) authentication for enhanced security.
 
+Full-text search:
+- Add full-text search functionality for the service field in stored passwords to improve usability.
 
+Telegram Bot Enhancements:
+- Extend bot functionality with advanced search, improved error handling, and more secure session management.
 
+**Feel free to contribute or suggest features via pull requests!**
