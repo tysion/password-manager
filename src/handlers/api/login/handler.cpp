@@ -51,7 +51,7 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
     LOG_DEBUG() << "Username: " << username;
 
     const auto master_key_encoded = body["master_key"].As<std::string>();
-    const auto totp_code = body["totp_code"].As<uint32_t>();
+    const uint32_t totp_code = std::stoul(body["totp_code"].As<std::string>());
     const auto master_key = userver::crypto::base64::Base64Decode(master_key_encoded);
     LOG_DEBUG() << "Decoded master key and TOTP code";
 

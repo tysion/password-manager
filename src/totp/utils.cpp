@@ -6,6 +6,7 @@
 #include <userver/crypto/hash.hpp>
 
 #include <array>
+#include <stdexcept>
 #include <vector>
 
 namespace {
@@ -27,10 +28,6 @@ std::string Base32Encode(const std::string& input) {
         output += base32_chars[(value << (5 - bits)) & 0x1F];
     }
 
-    while (output.size() % 8 != 0) {
-        output += '=';
-    }
-
     return output;
 }
 
@@ -46,11 +43,6 @@ std::string Base32Decode(const std::string& input) {
 
     if (input.empty()) {
         return {};
-    }
-
-    // Check that the input length is a multiple of 8
-    if (input.size() % 8 != 0) {
-        throw std::invalid_argument("Base32 input length must be a multiple of 8");
     }
 
     std::string result;

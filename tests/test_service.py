@@ -1,12 +1,13 @@
 import pytest
 import psycopg2
+import pyotp
 import requests
 
 BASE_URL = "http://localhost:8080/api/v1"
 
 DB_CONFIG = {
-    "dbname": "password_manager",
-    "user": "password_manager",
+    "dbname": "vaulty",
+    "user": "vaulty",
     "password": "password",
     "host": "localhost",
     "port": 35432,
@@ -79,7 +80,8 @@ def user_registration_and_login(user):
     assert "totp_secret" in data
 
     master_key = data["master_key"]
-    totp_code = 123456  # Предполагаем, что используем этот код
+    totp_secret = data["totp_secret"]
+    totp_code = pyotp.TOTP(totp_secret).now()  # Предполагаем, что используем этот код
 
     # Успешный логин
     login_payload = {**user, "master_key": master_key, "totp_code": totp_code}
@@ -88,7 +90,7 @@ def user_registration_and_login(user):
     login_data = response.json()
     assert "token" in login_data
 
-    return master_key, login_data["token"]
+    return master_key, totp_secret, login_data["token"]
 
 
 def multiple_user_registration_and_login(users):
@@ -104,8 +106,8 @@ def multiple_user_registration_and_login(users):
         assert "totp_secret" in data
 
         master_key = data["master_key"]
-        totp_code = 123456  # Статический TOTP-код для тестов
-        registered_users.append({"username": user["username"], "master_key": master_key, "totp_code": totp_code})
+        totp_secret = data["totp_secret"]
+        registered_users.append({"username": user["username"], "master_key": master_key, "totp_secret": totp_secret})
 
     return registered_users
 
@@ -114,12 +116,26 @@ def test_user_registration_and_login(test_user):
     user_registration_and_login(test_user)
 
 
-def test_invalid_login(test_user):
+def test_invalid_master_key(test_user):
     # Регистрация и логин
-    master_key, token = user_registration_and_login(test_user)
+    master_key, totp_secret, token = user_registration_and_login(test_user)
 
     # Пытаемся залогиниться с неверным мастер-ключом
-    invalid_payload = {**test_user, "master_key": "invalid_key", "totp_code": 123456}
+    totp_code = pyotp.TOTP(totp_secret).now()
+    invalid_payload = {**test_user, "master_key": "invalid_key", "totp_code": totp_code}
+    response = requests.post(f"{BASE_URL}/auth", json=invalid_payload)
+    assert response.status_code == 401
+    data = response.json()
+    assert data["message"] == "Invalid master key or TOTP code"
+
+
+def test_invalid_totp_code(test_user):
+     # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Пытаемся залогиниться с неверным мастер-ключом
+    totp_code = "123456"
+    invalid_payload = {**test_user, "master_key": "invalid_key", "totp_code": totp_code}
     response = requests.post(f"{BASE_URL}/auth", json=invalid_payload)
     assert response.status_code == 401
     data = response.json()
@@ -140,7 +156,7 @@ def test_add_password_with_invalid_jwt(invalid_jwt, test_passwords):
 
 def test_add_and_get_passwords(test_user, test_passwords):
     # Регистрация и логин
-    master_key, token = user_registration_and_login(test_user)
+    master_key, totp_secret, token = user_registration_and_login(test_user)
 
     # Добавляем пароли
     for password in test_passwords:
@@ -171,7 +187,7 @@ def test_add_and_get_passwords(test_user, test_passwords):
 
 def test_get_specific_password(test_user, test_passwords):
     # Регистрация и логин
-    master_key, token = user_registration_and_login(test_user)
+    master_key, totp_secret, token = user_registration_and_login(test_user)
 
     # Добавляем пароль
     response = requests.post(
@@ -217,7 +233,7 @@ def test_add_password_without_auth(test_passwords):
 
 def test_get_nonexistent_password(test_user):
     # Регистрация и логин
-    master_key, token = user_registration_and_login(test_user)
+    master_key, totp_secret, token = user_registration_and_login(test_user)
 
     # Пытаемся получить пароль с несуществующим ID
     response = requests.get(
@@ -240,9 +256,10 @@ def test_password_isolation_between_users(users, passwords_for_users):
     tokens = {}
     for user in registered_users:
         # Логин
+        totp_code = pyotp.TOTP(user["totp_secret"]).now()
         response = requests.post(
             f"{BASE_URL}/auth",
-            json={"username": user["username"], "master_key": user["master_key"], "totp_code": user["totp_code"]},
+            json={"username": user["username"], "master_key": user["master_key"], "totp_code": totp_code},
         )
         assert response.status_code == 200
         data = response.json()
@@ -297,9 +314,10 @@ def test_access_other_users_passwords(users, passwords_for_users):
     tokens = {}
     for user in registered_users:
         # Логин
+        totp_code = pyotp.TOTP(user["totp_secret"]).now()
         response = requests.post(
             f"{BASE_URL}/auth",
-            json={"username": user["username"], "master_key": user["master_key"], "totp_code": user["totp_code"]},
+            json={"username": user["username"], "master_key": user["master_key"], "totp_code": totp_code},
         )
         assert response.status_code == 200
         data = response.json()

@@ -10,7 +10,7 @@ from telegram.ext import (
 import requests
 import os
 
-BASE_URL = "http://password_manager:8080/api/v1"
+BASE_URL = "http://vaulty_service:8080/api/v1"
 TOKENS = {}
 LOGIN, MASTER_KEY = range(2)
 

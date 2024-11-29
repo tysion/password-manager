@@ -18,7 +18,7 @@ RUN mkdir build && cd build && \
     cmake --build . --target all_with_tests -- -j$(nproc)
 
 # Уменьшение размера бинарника
-RUN strip /app/build/password_manager
+RUN strip /app/build/vaulty
 
 # Этап 2: Упаковка минимального образа
 FROM ubuntu:22.04
@@ -76,8 +76,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Копирование бинарника и конфигов
-COPY --from=builder /app/build/password_manager /app/
+COPY --from=builder /app/build/vaulty /app/
 COPY --from=builder /app/configs /app/configs
 COPY --from=builder /app/postgresql /app/postgresql
 
-CMD ["./password_manager", "--config", "./configs/static_config.yaml", "--config_vars", "./configs/config_vars.yaml"]
+CMD ["./vaulty", "--config", "./configs/static_config.yaml", "--config_vars", "./configs/config_vars.yaml"]
