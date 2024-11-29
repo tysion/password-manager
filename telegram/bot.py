@@ -37,22 +37,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
 
         # Переход к авторизации
-        await update.message.reply_text("Введите ваш мастер-ключ для авторизации.")
+        await update.message.reply_text("Введите ваш мастер-ключ и TOTP код через пробел (ключ код) для авторизации.")
         return MASTER_KEY
 
     else:
         # Пользователь уже существует или другая ошибка
-        await update.message.reply_text(
-            "Введите ваш мастер-ключ для авторизации."
-        )
+        await update.message.reply_text("Введите ваш мастер-ключ и TOTP код через пробел (ключ код) для авторизации.")
         return MASTER_KEY
 
 
 async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
-    master_key = update.message.text.strip()
+    master_key, totp_code = update.message.text.split(" ", 2)
 
-    payload = {"username": str(user_id), "master_key": master_key, "totp_code": 123456}
+    payload = {"username": str(user_id), "master_key": master_key, "totp_code": totp_code}
     response = requests.post(f"{BASE_URL}/auth", json=payload)
 
     if response.status_code == 200:
