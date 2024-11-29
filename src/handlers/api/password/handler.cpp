@@ -14,17 +14,11 @@
 
 namespace {
 
-userver::formats::json::Value PasswordNotFound() {
-    userver::formats::json::ValueBuilder builder;
-    builder["message"] = "Password not found";
-    return builder.ExtractValue();
-}
-
-userver::formats::json::Value AccessDenied() {
-    userver::formats::json::ValueBuilder builder;
-    builder["message"] = "Access denied";
-    return builder.ExtractValue();
-}
+class Forbidden
+    : public userver::server::handlers::ExceptionWithCode<userver::server::handlers::HandlerErrorCode::kForbidden> {
+public:
+    using BaseType::BaseType;
+};
 
 userver::formats::json::Value SerializePassword(const models::Password& password, const std::string& decrypted) {
     userver::formats::json::ValueBuilder builder;
@@ -67,15 +61,14 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 
     if (result.IsEmpty()) {
         LOG_WARNING() << "Password not found for ID: " << password_id;
-        request.SetResponseStatus(userver::server::http::HttpStatus::kNotFound);
-        return PasswordNotFound();
+        throw userver::server::handlers::ResourceNotFound(userver::server::handlers::ExternalBody{"Password not found"}
+        );
     }
 
     const auto password = result.AsSingleRow<models::Password>(userver::storages::postgres::kRowTag);
     if (password.user_id != user_id) {
         LOG_WARNING() << "Access denied for password ID: " << password_id;
-        request.SetResponseStatus(userver::server::http::HttpStatus::kForbidden);
-        return AccessDenied();
+        throw Forbidden(userver::server::handlers::ExternalBody{"Access denied"});
     }
 
     const auto password_decrypted =
