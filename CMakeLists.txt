@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(password_manager)
+project(vaulty)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -49,6 +49,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_objs)
 add_executable(${PROJECT_NAME}_unittest
     src/crypto/test_utils.cpp
     src/jwt/test_client.cpp
+    src/totp/test_utils.cpp
 )
 target_link_libraries(${PROJECT_NAME}_unittest PRIVATE ${PROJECT_NAME}_objs userver::utest)
 add_google_tests(${PROJECT_NAME}_unittest TEST_PREFIX "${PROJECT_NAME}.")

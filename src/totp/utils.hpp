@@ -24,7 +24,12 @@ std::string GenerateTotpSecret(size_t length = 32);
 /// seconds).
 /// @param digits The number of digits in the TOTP code (default is 6 digits).
 /// @return The generated TOTP code.
-uint32_t GenerateTotpCode(const std::string& secret, uint32_t period = 30, size_t digits = 6);
+uint32_t GenerateTotpCode(
+    const std::string& secret,
+    uint32_t period = 30,
+    size_t digits = 6,
+    std::time_t timestamp = std::time(nullptr)
+);
 
 /// @brief Verifies the correctness of a given TOTP code.
 ///
@@ -44,7 +49,8 @@ bool VerifyTotpCode(
     uint32_t totp_code,
     uint32_t period = 30,
     size_t digits = 6,
-    int window = 1
+    int window = 1,
+    std::time_t timestamp = std::time(nullptr)
 );
 
 }  // namespace totp

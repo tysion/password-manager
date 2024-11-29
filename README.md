@@ -24,8 +24,8 @@ A password management service with a Telegram bot interface. This project provid
 ### Build the Service
 Clone the repository:
  ```bash
- git clone https://github.com/your-repo/password-manager.git
- cd password-manager
+ git clone https://github.com/your-repo/vaulty.git
+ cd vaulty
  ```
 
 Build the service using CMake:
@@ -37,7 +37,7 @@ cmake --build . -- -j$(nproc)
 
 Run the service:
 ```
-./password_manager --config ../configs/static_config.yaml --config_vars ../configs/config_vars.yaml
+./vaulty --config ../configs/static_config.yaml --config_vars ../configs/config_vars.yaml
 ```
 
 ---
@@ -55,7 +55,7 @@ docker-compose up -d
 
 Check logs for the service:
 ```
-docker logs password_manager_service
+docker logs vaulty_service
 ```
 
 ---
@@ -65,16 +65,16 @@ docker logs password_manager_service
 ### Unit Tests
 Build and run unit tests:
 ```
-cmake --build . --target password_manager_unittest
-./password_manager_unittest
+cmake --build . --target vaulty_unittest
+./vaulty_unittest
 ```
 
 ### Integration Tests
 Configure .env for integration tests:
 ```bash
-POSTGRES_USER=password_manager
+POSTGRES_USER=vaulty
 POSTGRES_PASSWORD=password
-POSTGRES_DB=password_manager
+POSTGRES_DB=vaulty
 BASE_URL=http://localhost:8080/api/v1
 ```
 

@@ -6,26 +6,32 @@ services:
     container_name: postgres
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: vaulty
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: vaulty
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgresql/schemas/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "35432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U vaulty -d vaulty" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  password_manager_service:
+  vaulty_service:
     build:
       context: .
       dockerfile: Dockerfile
-    image: password_manager_service
-    container_name: password_manager
+    image: vaulty_service
+    container_name: vaulty_service
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      DB_CONNECTION: ${POSTGRES_URL}
+      DB_CONNECTION: postgres://vaulty:${POSTGRES_PASSWORD}@postgres:5432/vaulty
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       CRYPTO_AES_256_BASE64_KEY: ${CRYPTO_AES_256_BASE64_KEY}
     ports:
@@ -35,12 +41,12 @@ services:
     build:
       context: ./telegram
       dockerfile: Dockerfile
-    image: password_manager_bot
-    container_name: password_manager_bot
+    image: vaulty_bot
+    container_name: vaulty_bot
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
-      - password_manager_service
+      - vaulty_service
 
 volumes:
   postgres_data:

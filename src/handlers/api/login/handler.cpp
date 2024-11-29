@@ -13,22 +13,6 @@
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/storages/postgres/component.hpp>
 
-namespace {
-
-userver::formats::json::Value UnknownUser() {
-    userver::formats::json::ValueBuilder builder;
-    builder["message"] = "Unknown user";
-    return builder.ExtractValue();
-}
-
-userver::formats::json::Value InvalidMasterKeyOrTotpCode() {
-    userver::formats::json::ValueBuilder builder;
-    builder["message"] = "Invalid master key or TOTP code";
-    return builder.ExtractValue();
-}
-
-}  // namespace
-
 namespace handlers::api::login::post {
 
 Handler::Handler(
@@ -51,7 +35,7 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
     LOG_DEBUG() << "Username: " << username;
 
     const auto master_key_encoded = body["master_key"].As<std::string>();
-    const auto totp_code = body["totp_code"].As<uint32_t>();
+    const uint32_t totp_code = std::stoul(body["totp_code"].As<std::string>());
     const auto master_key = userver::crypto::base64::Base64Decode(master_key_encoded);
     LOG_DEBUG() << "Decoded master key and TOTP code";
 
@@ -61,8 +45,7 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 
     if (result.IsEmpty()) {
         LOG_WARNING() << "Unknown user: " << username;
-        request.SetResponseStatus(userver::server::http::HttpStatus::kUnauthorized);
-        return UnknownUser();
+        throw userver::server::handlers::Unauthorized(userver::server::handlers::ExternalBody{"Unknown user"});
     }
 
     const auto user = result.AsSingleRow<models::User>(userver::storages::postgres::kRowTag);
@@ -72,15 +55,17 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
     const auto salt = userver::crypto::base64::Base64Decode(user.salt_encoded);
     if (!crypto::VerifyMasterKeyHashWithSalt(master_key, salt, user.master_key_hash)) {
         LOG_WARNING() << "Invalid master key for user: " << username;
-        request.SetResponseStatus(userver::server::http::HttpStatus::kUnauthorized);
-        return InvalidMasterKeyOrTotpCode();
+        throw userver::server::handlers::Unauthorized(
+            userver::server::handlers::ExternalBody{"Invalid master key or TOTP code"}
+        );
     }
 
     // verify TOTP code
     if (!totp::VerifyTotpCode(user.totp_secret, totp_code)) {
         LOG_WARNING() << "Invalid TOTP code for user: " << username;
-        request.SetResponseStatus(userver::server::http::HttpStatus::kUnauthorized);
-        return InvalidMasterKeyOrTotpCode();
+        throw userver::server::handlers::Unauthorized(
+            userver::server::handlers::ExternalBody{"Invalid master key or TOTP code"}
+        );
     }
 
     jwt::Payload jwt_payload;
