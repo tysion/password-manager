@@ -1,6 +1,6 @@
 # Password Manager Service
 
-A password management service with a Telegram bot interface. This project provides APIs for managing passwords and integrates with PostgreSQL for data storage. It ensures security with encryption, JWT-based authentication, and future support for TOTP.
+A password management service with a Telegram bot interface. This project provides APIs for managing passwords and integrates with PostgreSQL for data storage. It ensures security with encryption, JWT-based authentication, and support for TOTP.
 
 ---
 
@@ -87,9 +87,6 @@ pytest test_service.py
 ---
 
 ## Future Work
-
-TOTP support:
-- Implement time-based one-time password (TOTP) authentication for enhanced security.
 
 Full-text search:
 - Add full-text search functionality for the service field in stored passwords to improve usability.
