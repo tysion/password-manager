@@ -9,10 +9,39 @@ from telegram.ext import (
 )
 import requests
 import os
+import random
+import string
 
 BASE_URL = "http://vaulty_service:8080/api/v1"
 TOKENS = {}
 LOGIN, MASTER_KEY = range(2)
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+    "📖 *Помощь*\n\n"
+    "🔐 *Доступные команды:*\n"
+    "/start - Регистрация или вход в бота.\n"
+    "/add - Добавить новый пароль.\n"
+    "/get - Получить сохранённые пароли.\n"
+    "/logout - Выйти из аккаунта и очистить сессию.\n"
+    "/gen [длина] - Сгенерировать надёжный пароль. По умолчанию длина 16 символов. Минимум — 8 символов.\n"
+    "/help - Показать это сообщение.\n\n"
+    "🔑 *Как настроить Google Authenticator:*\n"
+    "1. Откройте приложение Google Authenticator.\n"
+    "2. Нажмите на значок '+' для добавления нового аккаунта.\n"
+    "3. Выберите 'Ввести ключ вручную'.\n"
+    "4. Введите предоставленный TOTP-ключ и укажите имя vaulty.\n"
+    "5. Нажмите 'Добавить', чтобы завершить настройку.\n"
+    "6. Используйте сгенерированные одноразовые коды для авторизации в боте.\n\n"
+    "🛡 *Рекомендации по безопасности:*\n"
+    "Рекомендуем настроить *автоудаление* диалога с ботом через 24 часа.\n"
+    "Это можно сделать в настройках чата:\n"
+    "1. Откройте этот чат.\n"
+    "2. Нажмите на название чата сверху.\n"
+    "3. Выберите 'Автоудаление сообщений'.\n"
+    "4. Установите время автоудаления на 24 часа.\n\n"
+    "❗ Это поможет защитить ваши данные в случае утраты доступа к вашему устройству.", 
+    parse_mode="Markdown")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
@@ -26,23 +55,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         totp_secret = data["totp_secret"]
 
         await update.message.reply_text(
-            "Добро пожаловать! Вы успешно зарегистрированы.\n"
-            "Сохраните ваш мастер-ключ и TOTP-ключ, они понадобятся для авторизации.",
+            "👋 Добро пожаловать! Вы успешно зарегистрированы.\n"
+            "⚠️ *Сохраните ваш мастер-ключ и TOTP-ключ*, они понадобятся для авторизации.",
+            parse_mode="Markdown",
         )
         await update.message.reply_text(
-            f"Ваш мастер-ключ:\n`{master_key}`",
+            f"🔑 *Ваш мастер-ключ:*\n`{master_key}`",
+            parse_mode="Markdown",
         )
         await update.message.reply_text(
-            f"Ваш TOTP-ключ:\n`{totp_secret}`",
+            f"📲 *Ваш TOTP-ключ:*\n`{totp_secret}`",
+            parse_mode="Markdown",
         )
 
-        # Переход к авторизации
-        await update.message.reply_text("Введите ваш мастер-ключ и TOTP код через пробел (ключ код) для авторизации.")
+        await update.message.reply_text(
+            "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
+            parse_mode="Markdown",
+        )
         return MASTER_KEY
 
     else:
-        # Пользователь уже существует или другая ошибка
-        await update.message.reply_text("Введите ваш мастер-ключ и TOTP код через пробел (ключ код) для авторизации.")
+        await update.message.reply_text(
+            "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
+            parse_mode="Markdown",
+        )
         return MASTER_KEY
 
 
@@ -56,35 +92,59 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     if response.status_code == 200:
         token = response.json()["token"]
         TOKENS[user_id] = token
-        await update.message.reply_text("Авторизация прошла успешно! Вы можете использовать команды /add, /get или /logout.")
+        await update.message.reply_text(
+            "✅ *Авторизация прошла успешно!* 🎉\n"
+            "Теперь вы можете использовать команды:\n"
+            "• /add — добавить пароль\n"
+            "• /get — получить сохранённые пароли\n"
+            "• /logout — выйти из аккаунта.",
+            parse_mode="Markdown",
+        )
         return ConversationHandler.END
     else:
-        await update.message.reply_text("Ошибка авторизации. Попробуйте снова.")
+        await update.message.reply_text(
+            "❌ *Ошибка авторизации*. Попробуйте снова.\n"
+            "Убедитесь, что ввели правильный мастер-ключ и TOTP-код.",
+            parse_mode="Markdown",
+        )
         return MASTER_KEY
-    
+        
 
 async def add_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id not in TOKENS:
-        await update.message.reply_text("Сначала авторизуйтесь с помощью команды /start.")
+        await update.message.reply_text(
+            "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
+            parse_mode="Markdown",
+        )
         return
 
-    await update.message.reply_text("Введите название сервиса, логин и пароль через пробел (сервис логин пароль):")
+    await update.message.reply_text(
+        "📝 Введите название сервиса, логин и пароль через пробел.\n"
+        "Пример: `сервис логин пароль`",
+        parse_mode="Markdown",
+    )
     context.user_data["awaiting_password"] = True
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка сообщений после команды /add."""
     user_id = update.message.from_user.id
     if user_id not in TOKENS:
-        await update.message.reply_text("Сначала авторизуйтесь с помощью команды /start.")
+        await update.message.reply_text(
+            "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
+            parse_mode="Markdown",
+        )
         return
 
     if context.user_data.get("awaiting_password"):
         try:
             service, login, password = update.message.text.split(" ", 2)
         except ValueError:
-            await update.message.reply_text("Пожалуйста, введите данные в формате: сервис логин пароль.")
+            await update.message.reply_text(
+                "⚠️ Пожалуйста, введите данные в формате:\n"
+                "`сервис логин пароль`",
+                parse_mode="Markdown",
+            )
             return
 
         token = TOKENS[user_id]
@@ -96,19 +156,30 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         if response.status_code == 200:
-            await update.message.reply_text("Пароль успешно добавлен!")
+            await update.message.reply_text(
+                "✅ *Пароль успешно добавлен!* 🔐",
+                parse_mode="Markdown",
+            )
         else:
-            await update.message.reply_text("Не удалось добавить пароль.")
+            await update.message.reply_text(
+                "❌ *Не удалось добавить пароль.* Попробуйте позже.",
+                parse_mode="Markdown",
+            )
         context.user_data["awaiting_password"] = False
     else:
-        await update.message.reply_text("Неизвестная команда. Используйте /add, /get или /logout.")
+        await update.message.reply_text(
+            "🤔 *Неизвестная команда*. Используйте /help чтобы получить список доступных команд.",
+            parse_mode="Markdown",
+        )
 
 
 async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Retrieve all saved passwords for the user."""
     user_id = update.message.from_user.id
     if user_id not in TOKENS:
-        await update.message.reply_text("Сначала авторизуйтесь с помощью команды /start.")
+        await update.message.reply_text(
+            "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
+            parse_mode="Markdown",
+        )
         return
 
     token = TOKENS[user_id]
@@ -122,21 +193,77 @@ async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if passwords:
             for password in passwords:
                 await update.message.reply_text(
-                    f"Сервис: {password['service']}\nЛогин: {password['login']}\nПароль: {password['password']}"
+                    f"🔐 *Сервис:* {password['service']}\n"
+                    f"🔑 *Логин:* {password['login']}\n"
+                    f"💻 *Пароль:* `{password['password']}`",
+                    parse_mode="Markdown",
                 )
         else:
-            await update.message.reply_text("Нет сохранённых паролей.")
+            await update.message.reply_text(
+                "❌ Нет сохранённых паролей.",
+                parse_mode="Markdown",
+            )
     else:
-        await update.message.reply_text("Не удалось получить пароли.")
+        await update.message.reply_text(
+            "⚠️ Не удалось получить пароли. Попробуйте позже.",
+            parse_mode="Markdown",
+        )
 
 
 async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id in TOKENS:
         del TOKENS[user_id]
-        await update.message.reply_text("Вы успешно вышли из системы.")
+        await update.message.reply_text(
+            "✅ *Вы успешно вышли из системы.*\nДо новых встреч! 👋",
+            parse_mode="Markdown",
+        )
     else:
-        await update.message.reply_text("Вы не были авторизованы.")
+        await update.message.reply_text(
+            "❌ *Вы не были авторизованы.*\nПожалуйста, выполните вход с помощью команды /start.",
+            parse_mode="Markdown",
+        )
+
+
+DEFAULT_PASSWORD_LENGTH = 16
+
+def generate_password(length: int = DEFAULT_PASSWORD_LENGTH) -> str:
+    if length < 8:
+        raise ValueError("Password length must be at least 8 characters")
+
+    letters = string.ascii_letters
+    digits = string.digits
+    symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?/"
+
+    all_characters = letters + digits + symbols
+    password = random.choice(letters) + random.choice(digits) + random.choice(symbols)
+
+    password += ''.join(random.choices(all_characters, k=length - 3))
+
+    password = ''.join(random.sample(password, len(password)))
+
+    return password
+
+
+async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        if context.args:
+            length = int(context.args[0])
+        else:
+            length = DEFAULT_PASSWORD_LENGTH
+
+        password = generate_password(length)
+
+        await update.message.reply_text(
+            f"🔑 *Сгенерированный пароль:*\n`{password}`",
+            parse_mode="Markdown",
+        )
+
+    except ValueError as e:
+        await update.message.reply_text(
+            f"❌ Неверный ввод: {e}\nПожалуйста, укажите корректную длину пароля (минимум 8 символов).",
+            parse_mode="Markdown",
+        )
 
 
 def main():
@@ -156,6 +283,8 @@ def main():
     application.add_handler(CommandHandler("add", add_password))
     application.add_handler(CommandHandler("get", get_passwords))
     application.add_handler(CommandHandler("logout", logout))
+    application.add_handler(CommandHandler("help", help))
+    application.add_handler(CommandHandler("gen", gen))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.run_polling()
