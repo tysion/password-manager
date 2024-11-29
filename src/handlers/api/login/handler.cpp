@@ -25,7 +25,7 @@ Handler::Handler(
       key_{context.FindComponent<crypto::Component>().GetDecodedKey("aes256_base64_key")} {}
 
 userver::formats::json::Value Handler::HandleRequestJsonThrow(
-    const userver::server::http::HttpRequest& request,
+    [[maybe_unused]] const userver::server::http::HttpRequest& request,
     const userver::formats::json::Value& body,
     [[maybe_unused]] userver::server::request::RequestContext& context
 ) const {
