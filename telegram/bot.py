@@ -11,6 +11,7 @@ import requests
 import os
 import random
 import string
+from datetime import datetime
 
 BASE_URL = "http://vaulty_service:8080/api/v1"
 TOKENS = {}
@@ -29,9 +30,10 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     "🔐 *Доступные команды:*\n"
     "/start - Регистрация или вход в бота.\n"
     "/add - Добавить новый пароль.\n"
+    "/del <ID> - Удилть пароль.\n"
     "/get - Получить сохранённые пароли.\n"
     "/logout - Выйти из аккаунта и очистить сессию.\n"
-    "/gen [длина] - Сгенерировать надёжный пароль. По умолчанию длина 16 символов. Минимум — 8 символов.\n"
+    "/gen <длина> - Сгенерировать надёжный пароль. По умолчанию длина 16 символов. Минимум — 8 символов.\n"
     "/help - Показать это сообщение.\n\n"
     "🔑 *Как настроить Google Authenticator:*\n"
     "1. Откройте приложение Google Authenticator.\n"
@@ -112,6 +114,7 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "Теперь вы можете использовать команды:\n"
             "• /add — добавить пароль\n"
             "• /get — получить сохранённые пароли\n"
+            "• /del — удалить пароль\n"
             "• /logout — выйти из аккаунта.",
             parse_mode="Markdown",
         )
@@ -125,7 +128,7 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return MASTER_KEY
         
 
-async def add_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_add_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id not in TOKENS:
         await update.message.reply_text(
@@ -140,6 +143,43 @@ async def add_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
     context.user_data["awaiting_password"] = True
+
+
+async def cmd_delete_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if user_id not in TOKENS:
+        await update.message.reply_text(
+            "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
+            parse_mode="Markdown",
+        )
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "⚠️ Пожалуйста, укажите ID пароля, который нужно удалить.\n"
+            "Пример: `/del <ID пароля>`",
+            parse_mode="Markdown",
+        )
+        return
+    
+    token = TOKENS[user_id]
+    password_id = context.args[0]
+
+    response = requests.delete(
+        f"{BASE_URL}/password/{password_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    if response.status_code == 200:
+        await update.message.reply_text(
+            f"✅ Пароль с ID `{password_id}` успешно удалён! 🔐",
+            parse_mode="Markdown",
+        )
+    else:
+        await update.message.reply_text(
+            f"❌ Не удалось удалить пароль с ID `{password_id}`. Попробуйте еще раз.",
+            parse_mode="Markdown",
+        )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -188,7 +228,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id not in TOKENS:
         await update.message.reply_text(
@@ -207,9 +247,15 @@ async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
         passwords = response.json()
         if passwords:
             for password in passwords:
+                updated_at_str = password['updated_at']
+                updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                formatted_date = updated_at.strftime("%d.%m.%Y %H:%M:%S")
+
                 await update.message.reply_text(
+                    f"🆔 *ID:* {password['id']}\n"
                     f"🔐 *Сервис:* {password['service']}\n"
                     f"🔑 *Логин:* {password['login']}\n"
+                    f"🗓 *Создано:* {formatted_date}\n"
                     f"💻 *Пароль:*",
                     parse_mode="Markdown",
                 )
@@ -267,7 +313,7 @@ def generate_password(length: int = DEFAULT_PASSWORD_LENGTH) -> str:
     return password
 
 
-async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_generate_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         if context.args:
             length = int(context.args[0])
@@ -307,11 +353,12 @@ def main():
     )
 
     application.add_handler(conv_handler)
-    application.add_handler(CommandHandler("add", add_password))
-    application.add_handler(CommandHandler("get", get_passwords))
+    application.add_handler(CommandHandler("add", cmd_add_password))
+    application.add_handler(CommandHandler("get", cmd_get_passwords))
+    application.add_handler(CommandHandler("del", cmd_delete_password))
     application.add_handler(CommandHandler("logout", logout))
     application.add_handler(CommandHandler("help", help))
-    application.add_handler(CommandHandler("gen", gen))
+    application.add_handler(CommandHandler("gen", cmd_generate_password))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.run_polling()

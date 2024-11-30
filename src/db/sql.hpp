@@ -15,7 +15,7 @@ INSERT INTO passwords (user_id, service, login, password_encrypted) VALUES ($1, 
 )~"};
 
 inline constexpr const char* kGetPassword{R"~(
-SELECT * FROM passwords WHERE id = $1 AND user_id = $
+SELECT * FROM passwords WHERE id = $1 AND user_id = $2
 )~"};
 
 inline constexpr const char* kGetPasswords{R"~(
@@ -23,7 +23,7 @@ SELECT * FROM passwords WHERE user_id = $1
 )~"};
 
 inline constexpr const char* kDeletePassword{R"~(
-DELETE FROM passwords WHERE id = $1 AND user_id = $
+DELETE FROM passwords WHERE id = $1 AND user_id = $2
 )~"};
 
 }  // namespace db::sql
