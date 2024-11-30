@@ -12,6 +12,7 @@ import os
 import random
 import string
 from datetime import datetime
+from dateutil import parser
 
 BASE_URL = "http://vaulty_service:8080/api/v1"
 TOKENS = {}
@@ -248,7 +249,7 @@ async def cmd_get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if passwords:
             for password in passwords:
                 updated_at_str = password['updated_at']
-                updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                updated_at = parser.isoparse(updated_at_str)
                 formatted_date = updated_at.strftime("%d.%m.%Y %H:%M:%S")
 
                 await update.message.reply_text(
