@@ -10,6 +10,10 @@ inline constexpr const char* kCreateUser{R"~(
 INSERT INTO users (username, master_key_hash, salt_encoded, totp_secret) VALUES ($1, $2, $3, $4)
 )~"};
 
+inline constexpr const char* kDeleteUser{R"~(
+DELETE FROM users WHERE username = $1;
+)~"};
+
 inline constexpr const char* kCreatePassword{R"~(
 INSERT INTO passwords (user_id, service, login, password_encrypted) VALUES ($1, $2, $3, $4)
 )~"};

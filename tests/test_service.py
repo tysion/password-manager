@@ -115,6 +115,56 @@ def multiple_user_registration_and_login(users):
 def test_user_registration_and_login(test_user):
     user_registration_and_login(test_user)
 
+def test_user_delete(test_user):
+    # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Удаляем пользователя
+    totp_code = pyotp.TOTP(totp_secret).now()
+    payload = {**test_user, "totp_code": totp_code}
+    response = requests.delete(f"{BASE_URL}/user", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "User deleted successfully"
+
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Получаем список всех паролей
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    passwords_data = response.json()
+    assert len(passwords_data) == 0
+
+    # Пытаемся залогиниться
+    login_payload = {**test_user, "master_key": master_key, "totp_code": totp_code}
+    response = requests.post(f"{BASE_URL}/auth", json=login_payload)
+    assert response.status_code == 401
+    login_data = response.json()
+    login_data["message"] = "Unknown user"
+
+def test_user_delete_invalid_totp_code(test_user):
+    # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Пытаеся удаляем пользователя
+    invalid_payload = {**test_user, "totp_code": "123456"}
+    response = requests.delete(f"{BASE_URL}/user", json=invalid_payload)
+    assert response.status_code == 401
+    data = response.json()
+    assert data["message"] == "Invalid TOTP code"
+
+def test_user_delete_unknown_user():
+    invalid_payload = {"username": "unknown", "totp_code": "123456"}
+    response = requests.delete(f"{BASE_URL}/user", json=invalid_payload)
+    assert response.status_code == 401
+    data = response.json()
+    assert data["message"] == "Unknown user"
 
 def test_invalid_master_key(test_user):
     # Регистрация и логин
