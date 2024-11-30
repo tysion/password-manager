@@ -71,3 +71,23 @@ private:
 };
 
 }  // namespace handlers::api::password::post
+
+namespace handlers::api::password::del {
+
+class Handler final : public userver::server::handlers::HttpHandlerJsonBase {
+public:
+    static constexpr std::string_view kName = "handler-delete-password";
+
+    Handler(const userver::components::ComponentConfig& config, const userver::components::ComponentContext& context);
+
+    userver::formats::json::Value HandleRequestJsonThrow(
+        const userver::server::http::HttpRequest& request,
+        const userver::formats::json::Value& body,
+        userver::server::request::RequestContext& context
+    ) const override;
+
+private:
+    userver::storages::postgres::ClusterPtr pg_cluster_;
+};
+
+}  // namespace handlers::api::password::del

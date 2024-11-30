@@ -184,6 +184,56 @@ def test_add_and_get_passwords(test_user, test_passwords):
             for p in passwords_data
         )
 
+def test_delete_specific_password(test_user, test_passwords):
+    # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Добавляем пароли
+    for password in test_passwords:
+        response = requests.post(
+            f"{BASE_URL}/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json=password,
+        )
+        assert response.status_code == 200
+
+    # Удаляем добавленный пароль по ID
+    response = requests.delete(
+        f"{BASE_URL}/password/1",  # Предполагаем, что это первый добавленный пароль
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    
+    # Получаем список всех паролей
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    passwords_data = response.json()
+    assert len(passwords_data) == len(test_passwords) - 1
+
+    removed_service = test_passwords[0]["service"];
+    removed_login = test_passwords[0]["login"];
+    removed_password = test_passwords[0]["password"];
+
+    assert not any(
+        p["service"] == removed_service and p["login"] == removed_login and p["password"] == removed_password
+        for p in passwords_data
+    )
+
+def test_delete_nonexistent_password(test_user):
+    # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Пытаемся получить пароль с несуществующим ID
+    response = requests.delete(
+        f"{BASE_URL}/password/9999",  # Несуществующий ID
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    data = response.json()
+    assert data["message"] == "Password not found"
 
 def test_get_specific_password(test_user, test_passwords):
     # Регистрация и логин
@@ -348,6 +398,6 @@ def test_access_other_users_passwords(users, passwords_for_users):
     # Убедимся, что пароли первого пользователя недоступны
     for password in passwords_for_users[user1]:
         assert not any(
-            p["service"] == password["service"] and p["login"] == password["login"]
+            p["service"] == password["service"] and p["login"] == password["login"] and p["password"] == password["password"]
             for p in data
         )

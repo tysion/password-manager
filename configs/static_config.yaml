@@ -95,6 +95,14 @@ components_manager:
                 types:
                     - bearer
 
+        handler-delete-password:
+            path: /api/v1/password/{id}
+            method: DELETE
+            task_processor: main-task-processor
+            auth:
+                types:
+                    - bearer
+
         postgres-db-1:
             dbconnection: $dbconnection
             dbconnection#env: DB_CONNECTION

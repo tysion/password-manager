@@ -56,8 +56,9 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 
     const auto password_id = std::stoll(request.GetPathArg("id"));
 
-    const auto result =
-        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetPassword, password_id);
+    const auto result = pg_cluster_->Execute(
+        userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetPassword, password_id, user_id
+    );
 
     if (result.IsEmpty()) {
         LOG_WARNING() << "Password not found for ID: " << password_id;
@@ -105,7 +106,7 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
     const auto master_key = crypto::Decrypt(context.GetData<std::string>("master_key"), key_);
 
     const auto result =
-        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetUserPasswords, user_id);
+        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetPasswords, user_id);
 
     const auto passwords = result.AsContainer<std::vector<models::Password>>(userver::storages::postgres::kRowTag);
 
@@ -169,3 +170,41 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 }
 
 }  // namespace handlers::api::password::post
+
+namespace handlers::api::password::del {
+
+Handler::Handler(
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context
+)
+    : HttpHandlerJsonBase(config, context),
+      pg_cluster_{context.FindComponent<userver::components::Postgres>("postgres-db-1").GetCluster()} {}
+
+userver::formats::json::Value Handler::HandleRequestJsonThrow(
+    [[maybe_unused]] const userver::server::http::HttpRequest& request,
+    const userver::formats::json::Value& body,
+    [[maybe_unused]] userver::server::request::RequestContext& context
+) const {
+    LOG_INFO() << "Received request to delete a password";
+
+    const auto user_id = context.GetData<std::int32_t>("user_id");
+    const auto password_id = std::stoll(request.GetPathArg("id"));
+
+    const auto result = pg_cluster_->Execute(
+        userver::storages::postgres::ClusterHostType::kMaster, db::sql::kDeletePassword, password_id, user_id
+    );
+
+    if (result.RowsAffected() == 0) {
+        LOG_WARNING() << "Password not found for ID: " << password_id;
+        throw userver::server::handlers::ResourceNotFound(userver::server::handlers::ExternalBody{"Password not found"}
+        );
+    }
+
+    LOG_INFO() << "Password deleted successfully";
+
+    userver::formats::json::ValueBuilder response;
+    response["message"] = "Password deleted successfully";
+    return response.ExtractValue();
+}
+
+}  // namespace handlers::api::password::del
