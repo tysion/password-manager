@@ -32,8 +32,9 @@ int main(int argc, char* argv[]) {
                               .Append<handlers::api::user::post::Handler>()
                               .Append<handlers::api::login::post::Handler>()
                               .Append<handlers::api::password::get::Handler>()
-                              .Append<handlers::api::password::post::Handler>()
                               .Append<handlers::api::passwords::get::Handler>()
+                              .Append<handlers::api::password::post::Handler>()
+                              .Append<handlers::api::password::del::Handler>()
                               .Append<jwt::Component>()
                               .Append<crypto::Component>();
 
