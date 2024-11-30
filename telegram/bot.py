@@ -10,16 +10,56 @@ from telegram.ext import (
 import requests
 import os
 import random
+import redis
 import string
 from datetime import datetime
 from dateutil import parser
+from typing import Optional
 
 BASE_URL = "http://vaulty_service:8080/api/v1"
-TOKENS = {}
 DEFAULT_PASSWORD_LENGTH = 16
+DEFAULT_TOKEN_TTL = 7 * 24 * 60 * 60 # 1 week
 LOGIN, MASTER_KEY = range(2)
 CONFIRM_RESET, AWAITING_TOTP = range(2)
 AWAITING_PASSWORD = range(1)
+
+REDIS_CONN = None
+
+
+def get_redis_connection():
+    global REDIS_CONN
+    if REDIS_CONN is None:
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = int(os.getenv("REDIS_PORT", 6379))
+        redis_password = os.getenv("REDIS_PASSWORD", None)
+        REDIS_CONN = redis.StrictRedis(
+            host=redis_host,
+            port=redis_port,
+            password=redis_password,
+            decode_responses=True,
+        )
+    return REDIS_CONN
+
+
+def add_token(user_id: int, token: str, ttl: int) -> None:
+    redis_conn = get_redis_connection()
+    redis_conn.setex(f"user:{user_id}:token", ttl, token)
+
+
+def get_token(user_id: int) -> Optional[str]:
+    redis_conn = get_redis_connection()
+    return redis_conn.get(f"user:{user_id}:token")
+
+
+def delete_token(user_id: int) -> None:
+    redis_conn = get_redis_connection()
+    redis_conn.delete(f"user:{user_id}:token")
+
+
+def set_token_ttl(user_id: int, ttl: int) -> bool:
+    redis_conn = get_redis_connection()
+    return redis_conn.expire(f"user:{user_id}:token", ttl)
+
 
 def escape_markdown_v2(text: str) -> str:
     """Экранирование всех специальных символов для MarkdownV2"""
@@ -27,6 +67,7 @@ def escape_markdown_v2(text: str) -> str:
     for char in special_chars:
         text = text.replace(char, f"\\{char}")
     return text
+
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
@@ -56,6 +97,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     "4. Установите время автоудаления на 24 часа.\n\n"
     "❗ Это поможет защитить ваши данные в случае утраты доступа к вашему устройству.", 
     parse_mode="Markdown")
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
@@ -125,7 +167,7 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     if response.status_code == 200:
         token = response.json()["token"]
-        TOKENS[user_id] = token
+        add_token(user_id, token, DEFAULT_TOKEN_TTL);
         await update.message.reply_text(
             "✅ *Авторизация прошла успешно!* 🎉\n"
             "Теперь вы можете использовать команды:\n"
@@ -148,7 +190,8 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def cmd_add_password(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начинает процесс добавления пароля."""
     user_id = update.message.from_user.id
-    if user_id not in TOKENS:
+    token = get_token(user_id)
+    if token is None:
         await update.message.reply_text(
             "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
             parse_mode="Markdown",
@@ -176,7 +219,7 @@ async def handle_add_password(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return AWAITING_PASSWORD
 
-    token = TOKENS[user_id]
+    token = get_token(user_id)
     payload = {"service": service, "login": login, "password": password}
     response = requests.post(
         f"{BASE_URL}/password",
@@ -205,9 +248,11 @@ async def add_password_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE
     )
     return ConversationHandler.END
 
+
 async def cmd_delete_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if user_id not in TOKENS:
+    token = get_token(user_id)
+    if token is None:
         await update.message.reply_text(
             "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
             parse_mode="Markdown",
@@ -222,7 +267,7 @@ async def cmd_delete_password(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
     
-    token = TOKENS[user_id]
+    add_token(user_id, token, DEFAULT_TOKEN_TTL)
     password_id = context.args[0]
 
     response = requests.delete(
@@ -244,7 +289,8 @@ async def cmd_delete_password(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if user_id not in TOKENS:
+    token = get_token(user_id)
+    if token is None:
         await update.message.reply_text(
             "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
             parse_mode="Markdown",
@@ -259,14 +305,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if user_id not in TOKENS:
+    token = get_token(user_id)
+    if token is None:
         await update.message.reply_text(
             "🔒 *Сначала авторизуйтесь!* Используйте команду /start для входа.",
             parse_mode="Markdown",
         )
         return
 
-    token = TOKENS[user_id]
     response = requests.get(
         f"{BASE_URL}/passwords",
         headers={"Authorization": f"Bearer {token}"},
@@ -306,8 +352,9 @@ async def cmd_get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    if user_id in TOKENS:
-        del TOKENS[user_id]
+    token = get_token(user_id)
+    if token is not None:
+        delete_token(user_id)
         await update.message.reply_text(
             "✅ *Вы успешно вышли из системы.*\nДо новых встреч! 👋",
             parse_mode="Markdown",
@@ -351,6 +398,7 @@ async def reset_user_delete_user(update: Update, context: ContextTypes.DEFAULT_T
     response = requests.delete(f"{BASE_URL}/user", json=payload)
 
     if response.status_code == 200:
+        delete_token(user_id)
         await update.message.reply_text(
             "✅ *Ваш аккаунт и пароли успешно удалены.*\nМы будем ждать вас снова!",
             parse_mode="Markdown",
@@ -360,6 +408,7 @@ async def reset_user_delete_user(update: Update, context: ContextTypes.DEFAULT_T
             "❌ *Не удалось удалить аккаунт.* Проверьте ваш TOTP-код и повторите попытку.",
             parse_mode="Markdown",
         )
+    
     return ConversationHandler.END
 
 
