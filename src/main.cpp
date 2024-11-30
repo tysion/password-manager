@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
                               .Append<userver::components::Postgres>("postgres-db-1")
                               .Append<userver::clients::dns::Component>()
                               .Append<handlers::api::user::post::Handler>()
+                              .Append<handlers::api::user::del::Handler>()
                               .Append<handlers::api::login::post::Handler>()
                               .Append<handlers::api::password::get::Handler>()
                               .Append<handlers::api::passwords::get::Handler>()

@@ -1,6 +1,7 @@
 #include "handler.hpp"
 #include "crypto/utils.hpp"
 #include "db/sql.hpp"
+#include "models/user.hpp"
 #include "totp/utils.hpp"
 
 #include <userver/components/component.hpp>
@@ -22,7 +23,7 @@ Handler::Handler(
 userver::formats::json::Value Handler::HandleRequestJsonThrow(
     [[maybe_unused]] const userver::server::http::HttpRequest& request,
     const userver::formats::json::Value& body,
-    userver::server::request::RequestContext& /*context*/
+    [[maybe_unused]] userver::server::request::RequestContext& context
 ) const {
     LOG_INFO() << "Received request to register a new user";
 
@@ -62,3 +63,59 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 }
 
 }  // namespace handlers::api::user::post
+
+namespace handlers::api::user::del {
+
+Handler::Handler(
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context
+)
+    : HttpHandlerJsonBase(config, context),
+      pg_cluster_{context.FindComponent<userver::components::Postgres>("postgres-db-1").GetCluster()} {}
+
+userver::formats::json::Value Handler::HandleRequestJsonThrow(
+    [[maybe_unused]] const userver::server::http::HttpRequest& request,
+    const userver::formats::json::Value& body,
+    [[maybe_unused]] userver::server::request::RequestContext& context
+) const {
+    LOG_INFO() << "Received request to delete a user";
+
+    const auto username = body["username"].As<std::string>();
+    const auto totp_code = std::stoul(body["totp_code"].As<std::string>());
+    LOG_DEBUG() << "Username extracted: " << username;
+
+    const auto get_result =
+        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetUser, username);
+
+    if (get_result.IsEmpty()) {
+        LOG_WARNING() << "Unknown user: " << username;
+        throw userver::server::handlers::Unauthorized(userver::server::handlers::ExternalBody{"Unknown user"});
+    }
+
+    const auto user = get_result.AsSingleRow<models::User>(userver::storages::postgres::kRowTag);
+    LOG_DEBUG() << "User found in database: " << user.id;
+
+    if (!totp::VerifyTotpCode(user.totp_secret, totp_code)) {
+        LOG_WARNING() << "Invalid TOTP code for user: " << username;
+        throw userver::server::handlers::Unauthorized(userver::server::handlers::ExternalBody{"Invalid TOTP code"});
+    }
+
+    const auto delete_result =
+        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kMaster, db::sql::kDeleteUser, username);
+
+    if (delete_result.RowsAffected() == 0) {
+        LOG_WARNING() << "Failed to delete user: " << username;
+        throw userver::server::handlers::InternalServerError(
+            userver::server::handlers::ExternalBody{"Failed to delete user"}
+        );
+    }
+
+    LOG_INFO() << "User successfully deleted from database: " << username;
+
+    userver::formats::json::ValueBuilder builder;
+    builder["message"] = "User deleted successfully";
+
+    return builder.ExtractValue();
+}
+
+}  // namespace handlers::api::user::del
