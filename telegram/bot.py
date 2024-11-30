@@ -16,6 +16,13 @@ BASE_URL = "http://vaulty_service:8080/api/v1"
 TOKENS = {}
 LOGIN, MASTER_KEY = range(2)
 
+def escape_markdown_v2(text: str) -> str:
+    """Экранирование всех специальных символов для MarkdownV2"""
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!', ':']
+    for char in special_chars:
+        text = text.replace(char, f"\\{char}")
+    return text
+
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
     "📖 *Помощь*\n\n"
@@ -60,12 +67,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             parse_mode="Markdown",
         )
         await update.message.reply_text(
-            f"🔑 *Ваш мастер-ключ:*\n`{master_key}`",
+            f"🔑 *Ваш мастер-ключ:*",
             parse_mode="Markdown",
         )
         await update.message.reply_text(
-            f"📲 *Ваш TOTP-ключ:*\n`{totp_secret}`",
+            f"||{escape_markdown_v2(master_key)}||",
+            parse_mode="MarkdownV2",
+        )
+        await update.message.reply_text(
+            f"📲 *Ваш TOTP-ключ:*",
             parse_mode="Markdown",
+        )
+        await update.message.reply_text(
+            f"||{escape_markdown_v2(totp_secret)}||",
+            parse_mode="MarkdownV2",
         )
 
         await update.message.reply_text(
@@ -195,8 +210,12 @@ async def get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     f"🔐 *Сервис:* {password['service']}\n"
                     f"🔑 *Логин:* {password['login']}\n"
-                    f"💻 *Пароль:* `{password['password']}`",
+                    f"💻 *Пароль:*",
                     parse_mode="Markdown",
+                )
+                await update.message.reply_text(
+                    f"||{escape_markdown_v2(password['password'])}||",
+                    parse_mode="MarkdownV2",
                 )
         else:
             await update.message.reply_text(
@@ -230,6 +249,9 @@ DEFAULT_PASSWORD_LENGTH = 16
 def generate_password(length: int = DEFAULT_PASSWORD_LENGTH) -> str:
     if length < 8:
         raise ValueError("Password length must be at least 8 characters")
+    
+    if length > 128:
+        raise ValueError("Password length must be at max 128 characters")
 
     letters = string.ascii_letters
     digits = string.digits
@@ -255,8 +277,13 @@ async def gen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         password = generate_password(length)
 
         await update.message.reply_text(
-            f"🔑 *Сгенерированный пароль:*\n`{password}`",
+            f"🔑 *Сгенерированный пароль:*",
             parse_mode="Markdown",
+        )
+
+        await update.message.reply_text(
+            f"||{escape_markdown_v2(password)}||",
+            parse_mode="MarkdownV2",
         )
 
     except ValueError as e:
