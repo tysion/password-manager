@@ -75,7 +75,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     "🔐 *Доступные команды:*\n"
     "/start - Регистрация или вход в бота.\n"
     "/add - Добавить новый пароль.\n"
-    "/del <ID> - Удилть пароль.\n"
+    "/del <ID> - Удалить пароль.\n"
     "/get - Получить сохранённые пароли.\n"
     "/logout - Выйти из аккаунта и очистить сессию.\n"
     "/gen <длина> - Сгенерировать надёжный пароль. По умолчанию длина 16 символов. Минимум — 8 символов.\n"
@@ -158,20 +158,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             )
             return ConversationHandler.END
 
+        await update.message.reply_text(
+            "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел для авторизации.\b"
+            "Пример: `ключ код`",
+            parse_mode="Markdown",
+        )
         return MASTER_KEY
 
 
 async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
 
-    await update.message.reply_text(
-        "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
-        parse_mode="Markdown",
-    )
-
     try:
         master_key, totp_code = update.message.text.split(" ", 2)
     except:
+        await update.message.reply_text(
+            "⚠️ Пожалуйста, введите данные в корректном формате: *мастер-ключ* и *TOTP-код* через пробел.\n"
+            "Пример: `ключ код`",
+            parse_mode="Markdown",
+        )
         return MASTER_KEY
 
     payload = {"username": str(user_id), "master_key": master_key, "totp_code": totp_code}
