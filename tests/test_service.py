@@ -320,6 +320,91 @@ def test_get_password_with_invalid_jwt(invalid_jwt):
     assert data["message"] == "Invalid JWT signature"
 
 
+def test_get_passwords_with_concrete_term(test_user, test_passwords):
+    # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Добавляем пароли
+    for password in test_passwords:
+        response = requests.post(
+            f"{BASE_URL}/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json=password,
+        )
+        assert response.status_code == 200
+
+    # Пытаемся получить пароли 
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        params={"search_term": "dom"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["service"] == test_passwords[0]["service"]
+    assert data[0]["login"] == test_passwords[0]["login"]
+    assert data[0]["password"] == test_passwords[0]["password"]
+
+def test_get_passwords_with_broad_term(test_user, test_passwords):
+     # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Добавляем пароли
+    for password in test_passwords:
+        response = requests.post(
+            f"{BASE_URL}/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json=password,
+        )
+        assert response.status_code == 200
+
+    # Пытаемся получить пароли 
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        params={"search_term": ""},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == len(test_passwords)
+
+    assert all(
+        data[i]["service"] == test_passwords[i]["service"] and 
+        data[i]["login"] == test_passwords[i]["login"] and 
+        data[i]["password"] == test_passwords[i]["password"]
+            for i in range(len(data))
+    )
+
+def test_get_passwords_with_no_term(test_user, test_passwords):
+     # Регистрация и логин
+    master_key, totp_secret, token = user_registration_and_login(test_user)
+
+    # Добавляем пароли
+    for password in test_passwords:
+        response = requests.post(
+            f"{BASE_URL}/password",
+            headers={"Authorization": f"Bearer {token}"},
+            json=password,
+        )
+        assert response.status_code == 200
+
+    # Пытаемся получить пароли 
+    response = requests.get(
+        f"{BASE_URL}/passwords",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == len(test_passwords)
+
+    assert all(
+        data[i]["service"] == test_passwords[i]["service"] and 
+        data[i]["login"] == test_passwords[i]["login"] and 
+        data[i]["password"] == test_passwords[i]["password"]
+            for i in range(len(data))
+    )
+
 def test_add_password_without_auth(test_passwords):
     # Пытаемся добавить пароль без токена
     response = requests.post(

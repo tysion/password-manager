@@ -11,6 +11,7 @@
 #include <userver/server/handlers/exceptions.hpp>
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/storages/postgres/component.hpp>
+#include <userver/utils/text.hpp>
 
 namespace {
 
@@ -96,7 +97,7 @@ Handler::Handler(
       key_{context.FindComponent<crypto::Component>().GetDecodedKey("aes256_base64_key")} {}
 
 userver::formats::json::Value Handler::HandleRequestJsonThrow(
-    [[maybe_unused]] const userver::server::http::HttpRequest& request,
+    const userver::server::http::HttpRequest& request,
     [[maybe_unused]] const userver::formats::json::Value& body,
     userver::server::request::RequestContext& context
 ) const {
@@ -104,10 +105,11 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
 
     const auto user_id = context.GetData<std::int32_t>("user_id");
     const auto master_key = crypto::Decrypt(context.GetData<std::string>("master_key"), key_);
+    const auto search_term = userver::utils::text::ToLower(request.GetArg("search_term"));
 
-    const auto result =
-        pg_cluster_->Execute(userver::storages::postgres::ClusterHostType::kSlave, db::sql::kGetPasswords, user_id);
-
+    const auto result = pg_cluster_->Execute(
+        userver::storages::postgres::ClusterHostType::kSlave, db::sql::kSearchPasswords, user_id, search_term
+    );
     const auto passwords = result.AsContainer<std::vector<models::Password>>(userver::storages::postgres::kRowTag);
 
     userver::formats::json::ValueBuilder response(userver::formats::common::Type::kArray);
@@ -151,7 +153,7 @@ userver::formats::json::Value Handler::HandleRequestJsonThrow(
     const auto login = body["login"].As<std::string>();
     const auto password = body["password"].As<std::string>();
     const auto password_encrypted = userver::crypto::base64::Base64Encode(crypto::Encrypt(password, master_key));
-    LOG_DEBUG() << "Password emcrypted successfully";
+    LOG_DEBUG() << "Password encrypted successfully";
 
     const auto result = pg_cluster_->Execute(
         userver::storages::postgres::ClusterHostType::kMaster,
