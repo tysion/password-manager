@@ -144,22 +144,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     else:
-        await update.message.reply_text(
-            "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
-            parse_mode="Markdown",
-        )
+        token = get_token(user_id)
+        if token is not None:
+            await update.message.reply_text(
+                "👋 Добро пожаловать снова!\n\n"
+                "✨ Вот что вы можете сделать прямо сейчас:\n"
+                "• 🔑 /add — добавить новый пароль\n"
+                "• 📂 /get — посмотреть сохранённые пароли\n"
+                "• ❌ /del — удалить пароль\n"
+                "• 🚪 /logout — выйти из аккаунта\n\n"
+                "Чем я могу вам помочь? 😊",
+                parse_mode="Markdown",
+            )
+            return ConversationHandler.END
+
         return MASTER_KEY
 
 
 async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
+
+    await update.message.reply_text(
+        "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
+        parse_mode="Markdown",
+    )
+
     try:
         master_key, totp_code = update.message.text.split(" ", 2)
     except:
-        await update.message.reply_text(
-            "📝 Введите ваш *мастер-ключ* и *TOTP-код* через пробел (пример: `ключ код`) для авторизации.",
-            parse_mode="Markdown",
-        )
         return MASTER_KEY
 
     payload = {"username": str(user_id), "master_key": master_key, "totp_code": totp_code}
@@ -169,12 +181,13 @@ async def authenticate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         token = response.json()["token"]
         add_token(user_id, token, DEFAULT_TOKEN_TTL);
         await update.message.reply_text(
-            "✅ *Авторизация прошла успешно!* 🎉\n"
-            "Теперь вы можете использовать команды:\n"
-            "• /add — добавить пароль\n"
-            "• /get — получить сохранённые пароли\n"
-            "• /del — удалить пароль\n"
-            "• /logout — выйти из аккаунта.",
+            "✅ *Ура, авторизация успешна!* 🎉\n\n"
+            "🔐 Теперь вы можете:\n"
+            "• 🔑 /add — добавить новый пароль\n"
+            "• 📂 /get — посмотреть сохранённые пароли\n"
+            "• ❌ /del — удалить пароль\n"
+            "• 🚪 /logout — выйти из аккаунта\n\n"
+            "Что будем делать дальше? 😊",
             parse_mode="Markdown",
         )
         return ConversationHandler.END
@@ -234,7 +247,9 @@ async def handle_add_password(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     else:
         await update.message.reply_text(
-            "❌ *Не удалось добавить пароль.* Попробуйте позже.",
+            "❌ *Не удалось добавить пароль.* \n\n"
+            "🔑 Возможно, срок действия вашего токена истёк.\n"
+            "🚪 Попробуйте выйти с помощью /logout и затем заново войти через /start.\n\n",
             parse_mode="Markdown",
         )
     return ConversationHandler.END
@@ -282,7 +297,9 @@ async def cmd_delete_password(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     else:
         await update.message.reply_text(
-            f"❌ Не удалось удалить пароль с ID `{password_id}`. Попробуйте еще раз.",
+            f"❌ Не удалось удалить пароль с ID `{password_id}`. \n\n"
+            "🔑 Возможно, срок действия вашего токена истёк.\n"
+            "🚪 Попробуйте выйти с помощью /logout и затем заново войти через /start.\n\n",
             parse_mode="Markdown",
         )
 
@@ -345,7 +362,9 @@ async def cmd_get_passwords(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
     else:
         await update.message.reply_text(
-            "⚠️ Не удалось получить пароли. Попробуйте позже.",
+            "⚠️ *Не получилось получить пароли!*\n\n"
+            "🔑 Возможно, срок действия вашего токена истёк.\n"
+            "🚪 Попробуйте выйти с помощью /logout и затем заново войти через /start.\n\n",
             parse_mode="Markdown",
         )
 
