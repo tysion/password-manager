@@ -20,3 +20,4 @@ CREATE TABLE IF NOT EXISTS passwords (
 
 CREATE INDEX IF NOT EXISTS idx_passwords_user_id ON passwords(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users USING hash(username);
+CREATE INDEX IF NOT EXISTS idx_passwords_user_service_lower ON passwords (user_id, LOWER(service));

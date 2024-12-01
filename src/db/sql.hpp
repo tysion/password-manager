@@ -26,6 +26,10 @@ inline constexpr const char* kGetPasswords{R"~(
 SELECT * FROM passwords WHERE user_id = $1
 )~"};
 
+inline constexpr const char* kSearchPasswords{R"~(
+SELECT * FROM passwords WHERE user_id = $1 AND LOWER(service) LIKE '%' || $2 || '%';
+)~"};
+
 inline constexpr const char* kDeletePassword{R"~(
 DELETE FROM passwords WHERE id = $1 AND user_id = $2
 )~"};
